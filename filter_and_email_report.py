@@ -2,12 +2,12 @@ import pandas as pd
 import glob
 import os
 import sys
-import win32com.client as win32
+#import win32com.client as win32
 
-#try:
-    #import win32com.client
-#except ImportError:
-   # win32com = None
+try:
+    import win32com.client as win32
+except ImportError:
+    win32com = None
 
 # ======= CONFIGURATION =======
 DOWNLOAD_DIR = r"C:\Users\jboye\Downloads"
@@ -57,10 +57,10 @@ def save_filtered_excel(df, output_file):
     print(f"Filtered file saved as: {output_file}")
 
 def create_outlook_email(output_file):
-    if win32com is None:
+    if win32 is None:
         print("win32com.client not installed. Outlook email automation is unavailable.")
         return
-    outlook = win32com.client.Dispatch("Outlook.Application")
+    outlook = win32.Dispatch("Outlook.Application")
     mail = outlook.CreateItem(0)
     mail.Subject = "Filtered Delivery Report"
     mail.Body = "Please find the filtered report attached."
