@@ -93,6 +93,9 @@ def main():
 
     dispatch, r_blank, signed_blank = prompt_filters()
     df_filtered = apply_filters(df, dispatch, r_blank, signed_blank)
+    
+    #Sort by Driver ascending
+    df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
 
     if df_filtered.empty:
         print("No records matched your filters.")
