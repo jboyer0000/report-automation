@@ -45,15 +45,15 @@ def find_latest_report(download_dir, pattern):
 
 def prompt_filters():
     dispatch = input("DispatchZone to filter (leave blank for all): ").strip()
-    r_blank = input("Show only blank R? (yes/no): ").strip()
+    hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
     signed_blank = input("Show only blank SignedBy? (yes/no): ").strip()
-    return dispatch, r_blank, signed_blank
+    return dispatch, hide_blank_r, signed_blank
 
-def apply_filters(df, dispatch, r_blank, signed_blank):
+def apply_filters(df, dispatch, hide_blank_r, signed_blank):
     if dispatch:
         df = df[df["DispatchZone"].astype(str).str.contains(dispatch, case=False, na=False)]
-    if r_blank.lower() == "yes":
-        df = df[df["R"].isna() | (df["R"] == "")]
+    if hide_blank_r.lower() == "yes":
+        df = df[~(df["R"].isna() | (df["R"] == ""))]  # exclude blank R rows
     if signed_blank.lower() == "yes":
         df = df[df["SignedBy"].isna() | (df["SignedBy"] == "")]
     return df
@@ -91,8 +91,8 @@ def main():
 
     print(f"\nColumns found: {', '.join(df.columns)}")
 
-    dispatch, r_blank, signed_blank = prompt_filters()
-    df_filtered = apply_filters(df, dispatch, r_blank, signed_blank)
+    dispatch, hide_blank_r, signed_blank = prompt_filters()
+    df_filtered = apply_filters(df, dispatch, hide_blank_r, signed_blank)
     
     #Sort by Driver ascending
     df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
