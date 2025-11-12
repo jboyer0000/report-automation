@@ -2,6 +2,7 @@ import pandas as pd
 import glob
 import os
 import sys
+import subprocess
 
 try:
     import win32com.client as win32
@@ -100,6 +101,12 @@ def main():
         send_mail = input("Send via Outlook? (yes/no): ").strip()
         if send_mail.lower() == "yes":
             create_outlook_email(OUTPUT_FILE)
+        else:
+            try:
+                subprocess.Popen(['start', OUTPUT_FILE], shell=True)
+                print(f"Opened {OUTPUT_FILE} in Excel.")
+            except Exception as e:
+                print(f"Could not open the file automatically: {e}")
 
 if __name__ == "__main__":
     main()
