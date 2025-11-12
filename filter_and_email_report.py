@@ -2,15 +2,20 @@ import pandas as pd
 import glob
 import os
 import sys
-#import win32com.client as win32
 
 try:
     import win32com.client as win32
 except ImportError:
     win32com = None
+    
+from pathlib import Path
+
+def get_download_folder():
+    return str(Path.home() / "Downloads")
 
 # ======= CONFIGURATION =======
-DOWNLOAD_DIR = r"C:\Users\jboye\Downloads"
+DOWNLOAD_DIR = get_download_folder()
+print(f"Using download folder: {DOWNLOAD_DIR}")
 FILE_PATTERN = "xmlRpt*.xls" #Pattern to find your report file
 OUTPUT_FILE = os.path.join(DOWNLOAD_DIR, "filtered_report.xlsx")
 # =============================
