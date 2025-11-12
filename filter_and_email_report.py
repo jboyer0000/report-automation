@@ -80,6 +80,8 @@ def main():
         df = pd.read_excel(latest_file, engine="openpyxl")
     else:
         raise ValueError(f"Unsupported file extension: {ext}")
+        
+    df = df.drop_duplicates(subset=['OrderNumber']) #Remove duplicated OrderNumbers
 
     print(f"\nColumns found: {', '.join(df.columns)}")
 
