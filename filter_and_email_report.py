@@ -98,6 +98,8 @@ def main():
     dispatch, hide_blank_r, hide_driver_data, signed_blank = prompt_filters()
     df_filtered = apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank)
     
+    df_filtered["Driver"] = df_filtered["Driver"].astype(str)
+    
     #Sort by Driver ascending
     df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
 
