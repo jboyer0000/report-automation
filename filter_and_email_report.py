@@ -45,10 +45,36 @@ def find_latest_report(download_dir, pattern):
 
 def prompt_filters():
     dispatch = input("DispatchZone to filter (leave blank for all): ").strip()
-    hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
-    hide_driver_data = input("Hide rows with data in Driver? (yes/no): ").strip()
-    signed_blank = input("Show only blank SignedBy? (yes/no): ").strip()
+
+    if dispatch:
+        user_defaults = input("Use default 'yes' for other filters? (yes/no): ").strip().lower()
+        if user_defaults == 'yes':
+            hide_blank_r = 'yes'
+            hide_driver_data = 'yes'
+            signed_blank = 'yes'
+        else:
+            print("Customizing filters:")
+            hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
+            hide_driver_data = input("Hide rows with data in Driver? (yes/no): ").strip()
+            signed_blank = input("Show only blank SignedBy? (yes/no): ").strip()
+    else:
+									  
+																						 
+																					 
+																			
+			 
+										 
+																							 
+																						 
+																				
+		 
+        print("No DispatchZone entered, please answer the following filter questions.")
+        hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
+        hide_driver_data = input("Hide rows with data in Driver? ").strip()
+        signed_blank = input("Show only blank SignedBy? ").strip()
+
     return dispatch, hide_blank_r, hide_driver_data, signed_blank
+
 
 def apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank):
     if dispatch:
