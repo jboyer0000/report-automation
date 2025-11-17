@@ -3,7 +3,6 @@ import os
 import pandas as pd
 import pytest
 
-# Add project root to sys.path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import filter_and_email_report  # Import your main script here
