@@ -105,48 +105,55 @@ def create_outlook_email(output_file):
     mail.Display()
 
 def main():
-    latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
-    print(f"Latest report found: {latest_file}")
+    should_exit = False
 
-    ext = os.path.splitext(latest_file)[1].lower()
-    if ext == ".xls":
-        latest_file = convert_xls_to_xlsx(latest_file)
-        df = pd.read_excel(latest_file, engine="openpyxl")
-    elif ext == ".xlsx":
-        df = pd.read_excel(latest_file, engine="openpyxl")
-    else:
-        raise ValueError(f"Unsupported file extension: {ext}")
-        
-    df = df.drop_duplicates(subset=['OrderNumber']) #Remove duplicated OrderNumbers
+    while not should_exit:
+        latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
+        print(f"Latest report found: {latest_file}")
 
-    print(f"\nColumns found: {', '.join(df.columns)}")
-
-    dispatch, hide_blank_r, hide_driver_data, signed_blank = prompt_filters()
-    df_filtered = apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank)
-    
-    df_filtered["Driver"] = df_filtered["Driver"].fillna("")
-    
-    df_filtered["Driver"] = df_filtered["Driver"].astype(str)
-    
-    #Sort by Driver ascending
-    df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
-    
-    # Replace NaN in Driver column with empty string for clean Excel output
-    df_filtered["Driver"] = df_filtered["Driver"].fillna("")
-
-    if df_filtered.empty:
-        print("No records matched your filters.")
-    else:
-        save_filtered_excel(df_filtered, OUTPUT_FILE)
-        send_mail = input("Send via Outlook? (yes/no): ").strip()
-        if send_mail.lower() == "yes":
-            create_outlook_email(OUTPUT_FILE)
+        ext = os.path.splitext(latest_file)[1].lower()
+        if ext == ".xls":
+            latest_file = convert_xls_to_xlsx(latest_file)
+            df = pd.read_excel(latest_file, engine="openpyxl")
+        elif ext == ".xlsx":
+            df = pd.read_excel(latest_file, engine="openpyxl")
         else:
-            try:
-                subprocess.Popen(['start', OUTPUT_FILE], shell=True)
-                print(f"Opened {OUTPUT_FILE} in Excel.")
-            except Exception as e:
-                print(f"Could not open the file automatically: {e}")
+            raise ValueError(f"Unsupported file extension: {ext}")
+
+        df = df.drop_duplicates(subset=['OrderNumber'])  # Remove duplicates
+        print(f"\nColumns found: {', '.join(df.columns)}")
+
+        if should_exit:
+            break
+
+        dispatch, hide_blank_r, hide_driver_data, signed_blank = prompt_filters()
+
+        df_filtered = apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank)
+        df_filtered["Driver"] = df_filtered["Driver"].fillna("").astype(str)
+        df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
+
+        if df_filtered.empty:
+            print("No records matched your filters.")
+            retry = input("Please download the new report file and press Enter to try again or type 'exit' to quit: ").strip().lower()
+            if retry == 'exit':
+                print("Exiting.")
+                should_exit = True
+                break
+            else:
+                print("Retrying with new report file...")
+                continue
+        else:
+            save_filtered_excel(df_filtered, OUTPUT_FILE)
+            send_mail = input("Send via Outlook? (yes/no): ").strip()
+            if send_mail.lower() == "yes":
+                create_outlook_email(OUTPUT_FILE)
+            else:
+                try:
+                    subprocess.Popen(['start', OUTPUT_FILE], shell=True)
+                    print(f"Opened {OUTPUT_FILE} in Excel.")
+                except Exception as e:
+                    print(f"Could not open the file automatically: {e}")
+            should_exit = True
 
 if __name__ == "__main__":
     main()
