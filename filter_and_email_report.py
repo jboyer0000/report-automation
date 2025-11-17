@@ -4,6 +4,9 @@ import os
 import sys
 import subprocess
 
+from colorama import init, Fore, Style
+init(autoreset=True)
+
 try:
     import win32com.client as win32
 except ImportError:
@@ -16,7 +19,7 @@ def get_download_folder():
 
 # ======= CONFIGURATION =======
 DOWNLOAD_DIR = get_download_folder()
-print(f"Using download folder: {DOWNLOAD_DIR}")
+print(Fore.WHITE + f"Using download folder: {DOWNLOAD_DIR}")
 FILE_PATTERN = "xmlRpt*.xls" #Pattern to find your report file
 OUTPUT_FILE = os.path.join(DOWNLOAD_DIR, "filtered_report.xlsx")
 # =============================
@@ -29,7 +32,7 @@ def convert_xls_to_xlsx(xls_path):
     wb.SaveAs(xlsx_path, FileFormat=51)  # 51 is xlOpenXMLWorkbook = .xlsx
     wb.Close()
     excel.Quit()
-    print(f"Converted {xls_path} to {xlsx_path}")
+    print(Fore.CYAN + f"Converted {xls_path} to {xlsx_path}")
     return xlsx_path
 
 def find_latest_report(download_dir, pattern):
@@ -37,26 +40,28 @@ def find_latest_report(download_dir, pattern):
     file_pattern = os.path.join(download_dir, download_dir, pattern)
     files = glob.glob(file_pattern)
     if not files:
-        print("No report files found.")
+        print(Fore.YELLOW + "No report files found.")
         sys.exit(1)
     latest_file = max(files, key=os.path.getmtime)
-    print(f"Latest report found: {latest_file}")
+    print(Fore.GREEN + f"Latest report found: {latest_file}")
     return latest_file
 
 def prompt_filters():
-    dispatch = input("DispatchZone to filter (leave blank for all): ").strip()
+    print(Fore.CYAN + Style.BRIGHT + "=== FILTER REPORT PROMPTS ===")
+    dispatch = input(Fore.YELLOW + "DispatchZone to filter (leave blank for all): ").strip()
 
     if dispatch:
-        user_defaults = input("Use default 'yes' for other filters? (yes/no): ").strip().lower()
+        user_defaults = input(Fore.YELLOW + "Use default 'yes' for other filters? (yes/no): ").strip().lower()
         if user_defaults == 'yes':
             hide_blank_r = 'yes'
             hide_driver_data = 'yes'
             signed_blank = 'yes'
+            print(Fore.GREEN + "Using default filters 'yes.")
         else:
-            print("Customizing filters:")
-            hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
-            hide_driver_data = input("Hide rows with data in Driver? (yes/no): ").strip()
-            signed_blank = input("Show only blank SignedBy? (yes/no): ").strip()
+            print(Fore.CYAN + "Customizing filters:")
+            hide_blank_r = input(Fore.YELLOW + "Hide rows with blank receive scans? (yes or no): ").strip()
+            hide_driver_data = input(Fore.YELLOW + "Hide rows with data in Driver? (yes/no): ").strip()
+            signed_blank = input(Fore.YELLOW + "Show only blank SignedBy? (yes/no): ").strip()
     else:
 									  
 																						 
@@ -68,10 +73,10 @@ def prompt_filters():
 																						 
 																				
 		 
-        print("No DispatchZone entered, please answer the following filter questions.")
-        hide_blank_r = input("Hide rows with blank receive scans? (yes or no): ").strip()
-        hide_driver_data = input("Hide rows with data in Driver? ").strip()
-        signed_blank = input("Show only blank SignedBy? ").strip()
+        print(Fore.RED + "No DispatchZone entered, please answer the following filter questions.")
+        hide_blank_r = input(Fore.YELLOW + "Hide rows with blank receive scans? (yes or no): ").strip()
+        hide_driver_data = input(Fore.YELLOW + "Hide rows with data in Driver? ").strip()
+        signed_blank = input(Fore.YELLOW + "Show only blank SignedBy? ").strip()
 
     return dispatch, hide_blank_r, hide_driver_data, signed_blank
 
@@ -90,18 +95,18 @@ def apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank):
 
 def save_filtered_excel(df, output_file):
     df.to_excel(output_file, index=False)
-    print(f"Filtered file saved as: {output_file}")
+    print(Fore.GREEN + f"Filtered file saved as: {output_file}")
 
 def create_outlook_email(output_file):
     if win32 is None:
-        print("win32com.client not installed. Outlook email automation is unavailable.")
+        print(Fore.RED + "win32com.client not installed. Outlook email automation is unavailable.")
         return
     outlook = win32.Dispatch("Outlook.Application")
     mail = outlook.CreateItem(0)
     mail.Subject = "Filtered Delivery Report"
     mail.Body = "Please find the filtered report attached."
     mail.Attachments.Add(output_file)
-    mail.To = input("Enter recipient emails (comma separated): ").strip()
+    mail.To = input(Fore.YELLOW + "Enter recipient emails (comma separated): ").strip()
     mail.Display()
 
 def main():
@@ -109,7 +114,7 @@ def main():
 
     while not should_exit:
         latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
-        print(f"Latest report found: {latest_file}")
+        print(Fore.GREEN + f"Latest report found: {latest_file}")
 
         ext = os.path.splitext(latest_file)[1].lower()
         if ext == ".xls":
@@ -121,7 +126,7 @@ def main():
             raise ValueError(f"Unsupported file extension: {ext}")
 
         df = df.drop_duplicates(subset=['OrderNumber'])  # Remove duplicates
-        print(f"\nColumns found: {', '.join(df.columns)}")
+        print(Fore.GREEN + f"\nColumns found: {', '.join(df.columns)}")
 
         if should_exit:
             break
@@ -133,26 +138,26 @@ def main():
         df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
 
         if df_filtered.empty:
-            print("No records matched your filters.")
-            retry = input("Please download the new report file and press Enter to try again or type 'exit' to quit: ").strip().lower()
+            print(Fore.RED + "No records matched your filters.")
+            retry = input(Fore.YELLOW + "Please download the new report file and press Enter to try again or type 'exit' to quit: ").strip().lower()
             if retry == 'exit':
-                print("Exiting.")
+                print(Fore.RED + "Exiting.")
                 should_exit = True
                 break
             else:
-                print("Retrying with new report file...")
+                print(Fore.YELLOW + "Retrying with new report file...")
                 continue
         else:
             save_filtered_excel(df_filtered, OUTPUT_FILE)
-            send_mail = input("Send via Outlook? (yes/no): ").strip()
+            send_mail = input(Fore.YELLOW + "Send via Outlook? (yes/no): ").strip()
             if send_mail.lower() == "yes":
                 create_outlook_email(OUTPUT_FILE)
             else:
                 try:
                     subprocess.Popen(['start', OUTPUT_FILE], shell=True)
-                    print(f"Opened {OUTPUT_FILE} in Excel.")
+                    print(Fore.GREEN + f"Opened {OUTPUT_FILE} in Excel.")
                 except Exception as e:
-                    print(f"Could not open the file automatically: {e}")
+                    print(Fore.RED + f"Could not open the file automatically: {e}")
             should_exit = True
 
 if __name__ == "__main__":
