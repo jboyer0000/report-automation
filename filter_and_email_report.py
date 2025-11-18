@@ -1,8 +1,11 @@
+APP_VERSION = "2.3"
 import pandas as pd
 import glob
 import os
 import sys
 import subprocess
+import requests
+import webbrowser
 
 from colorama import init, Fore, Style
 init(autoreset=True)
@@ -13,6 +16,20 @@ except ImportError:
     win32com = None
     
 from pathlib import Path
+
+def check_for_updates():
+    VERSION_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/update/version.txt"
+    try:
+        response = requests.get(VERSION_URL)
+        response.raise_for_status()
+        latest_version = response.text.strip()
+        if latest_version != APP_VERSION:
+            print(f"A new version ({latest_version}) is available! Please update.")
+            choice = input("Open download page? (yes/no): ").strip().lower()
+            if choice == "yes":
+                webbrowser.open("https://github.com/jboyer0000/report-automation/releases/latest")
+    except Exception as e:
+        print(Fore.RED + Style.BRIGHT + f"Could not check for updates. Continuing... Error: {e}")
 
 def get_download_folder():
     return str(Path.home() / "Downloads")
@@ -161,4 +178,5 @@ def main():
             should_exit = True
 
 if __name__ == "__main__":
+    check_for_updates()
     main()
