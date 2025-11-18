@@ -71,7 +71,7 @@ python filter_and_email_report.py
 
 ### **Quick Start**
 
-1. **Download your report** - Ensure `xmlRpt*.xls` file is in your Downloads folder
+1. **Download your report** - After running the web query on Ecourier click 'save' instead of open in the the dialog that pops up. Ensure `xmlRpt*.xls` file is in your Downloads folder
 2. **Run the tool** - Double-click `filter_and_email_report.exe`
 3. **Answer the prompts**:
    - Enter a DispatchZone to filter (or leave blank for all)
