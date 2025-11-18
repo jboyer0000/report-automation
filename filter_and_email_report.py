@@ -18,7 +18,7 @@ except ImportError:
 from pathlib import Path
 
 def check_for_updates():
-    VERSION_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/update/version.txt"
+    VERSION_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/master/version.txt"
     try:
         response = requests.get(VERSION_URL)
         response.raise_for_status()
