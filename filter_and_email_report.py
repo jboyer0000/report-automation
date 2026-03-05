@@ -128,44 +128,65 @@ def create_outlook_email(output_file):
     mail.Display()
 
 def main():
+    # 1. Check for updates only ONCE when the script first starts
     check_for_updates()
     
-    print(Fore.WHITE + f"Using download folder: {DOWNLOAD_DIR}")
-    latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
-    
-    if not latest_file:
-        sys.exit(1)
-
-    print(Fore.GREEN + f"Latest report found: {latest_file}")
-
-    ext = os.path.splitext(latest_file)[1].lower()
-    if ext == ".xls":
-        latest_file = convert_xls_to_xlsx(latest_file)
-    
-    df = pd.read_excel(latest_file, engine="openpyxl")
-    df = df.drop_duplicates(subset=['OrderNumber'])
-    
-    print(Fore.GREEN + f"Columns found: {', '.join(df.columns)}")
-
-    dispatch, hb_r, hd_d, sb = prompt_filters()
-    df_filtered = apply_filters(df, dispatch, hb_r, hd_d, sb)
-    
-    # Fill NA to prevent sorting issues
-    df_filtered["Driver"] = df_filtered["Driver"].fillna("").astype(str)
-    df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
-
-    if df_filtered.empty:
-        print(Fore.RED + "No records matched your filters.")
-    else:
-        df_filtered.to_excel(OUTPUT_FILE, index=False)
-        print(Fore.GREEN + f"Filtered file saved: {OUTPUT_FILE}")
+    while True:
+        print(Fore.CYAN + Style.BRIGHT + "\n" + "="*40)
+        print(Fore.WHITE + f"Current Directory: {DOWNLOAD_DIR}")
+        print(Fore.WHITE + "Searching for latest report...")
         
-        send_mail = input(Fore.YELLOW + "Send via Outlook? (yes/no): ").strip().lower()
-        if send_mail == "yes":
-            create_outlook_email(OUTPUT_FILE)
-        else:
-            os.startfile(OUTPUT_FILE) # Simpler Windows open command
-            print(Fore.GREEN + "Opened file in Excel.")
+        latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
+        
+        if not latest_file:
+            print(Fore.RED + "No report found.")
+            retry = input(Fore.YELLOW + "Press Enter to search again or type 'exit' to quit: ").strip().lower()
+            if retry == 'exit':
+                break
+            continue
+
+        print(Fore.GREEN + f"Targeting report: {latest_file}")
+
+        # Process the file
+        ext = os.path.splitext(latest_file)[1].lower()
+        if ext == ".xls":
+            latest_file = convert_xls_to_xlsx(latest_file)
+        
+        try:
+            df = pd.read_excel(latest_file, engine="openpyxl")
+            df = df.drop_duplicates(subset=['OrderNumber'])
+            
+            print(Fore.GREEN + f"Columns found: {', '.join(df.columns)}")
+
+            # Filter and Save
+            dispatch, hb_r, hd_d, sb = prompt_filters()
+            df_filtered = apply_filters(df, dispatch, hb_r, hd_d, sb)
+            
+            df_filtered["Driver"] = df_filtered["Driver"].fillna("").astype(str)
+            df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
+
+            if df_filtered.empty:
+                print(Fore.RED + "No records matched your filters.")
+            else:
+                df_filtered.to_excel(OUTPUT_FILE, index=False)
+                print(Fore.GREEN + f"Success! Filtered file saved: {OUTPUT_FILE}")
+                
+                send_mail = input(Fore.YELLOW + "Send via Outlook? (yes/no): ").strip().lower()
+                if send_mail == "yes":
+                    create_outlook_email(OUTPUT_FILE)
+                else:
+                    os.startfile(OUTPUT_FILE)
+                    print(Fore.GREEN + "Opened in Excel.")
+
+        except Exception as e:
+            print(Fore.RED + f"An error occurred during processing: {e}")
+
+        # Final Prompt to keep the window open
+        print(Fore.CYAN + "\n" + "-"*40)
+        choice = input(Fore.YELLOW + "Ready for another report? (Press Enter to continue or type 'exit'): ").strip().lower()
+        if choice == 'exit':
+            print(Fore.WHITE + "Closing application.")
+            break
 
 if __name__ == "__main__":
     main()
