@@ -1,3 +1,4 @@
+APP_VERSION = "2.5"
 import pandas as pd
 import glob
 import os
