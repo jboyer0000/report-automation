@@ -1,4 +1,3 @@
-APP_VERSION = "2.4"
 import pandas as pd
 import glob
 import os
@@ -16,14 +15,11 @@ try:
     import win32com.client as win32
 except ImportError:
     win32com = None
-	
-						
 
 def check_for_updates():
-    """Checks for a version mismatch and offers to auto-download and restart the script."""
+    """Checks for updates and redirects the user to the GitHub Release page."""
     VERSION_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/master/version.txt"
-    # Ensure this URL points to the raw content of the main script file																	   
-    SCRIPT_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/master/filter_and_email_report.py"
+    RELEASE_URL = "https://github.com/jboyer0000/report-automation/releases/latest"
     
     try:
         response = requests.get(VERSION_URL, timeout=5)
@@ -32,24 +28,14 @@ def check_for_updates():
         
         if latest_version != APP_VERSION:
             print(Fore.CYAN + Style.BRIGHT + f"\n[UPDATE] A new version ({latest_version}) is available!")
-            choice = input(Fore.YELLOW + "Would you like to auto-update and restart now? (yes/no): ").strip().lower()
+            print(Fore.WHITE + "To update, please download the latest version from GitHub.")
+            choice = input(Fore.YELLOW + "Open the download page now? (yes/no): ").strip().lower()
             
             if choice == "yes":
-                print(Fore.WHITE + "Downloading update from GitHub...")
-                new_script = requests.get(SCRIPT_URL, timeout=10)
-                new_script.raise_for_status()
-
-																		   
-                current_script_path = os.path.realpath(sys.argv[0])
-                
-																 
-                with open(current_script_path, "wb") as f:
-                    f.write(new_script.content)
-                
-                print(Fore.GREEN + Style.BRIGHT + "Update installed! Restarting script...")
-				
-																		   
-                os.execv(sys.executable, ['python'] + sys.argv)
+                print(Fore.GREEN + "Opening browser...")
+                webbrowser.open(RELEASE_URL)
+                print(Fore.WHITE + "Please close this program before installing the new version.")
+                input(Fore.WHITE + "Press Enter to continue with the current version or close the window...")
     except Exception as e:
         print(Fore.RED + f"Update check skipped. Error: {e}")
 
@@ -58,7 +44,7 @@ def get_download_folder():
 
 # ======= CONFIGURATION =======
 DOWNLOAD_DIR = get_download_folder()
-FILE_PATTERN = "xmlRpt*.xls*" # Matches .xls and .xlsx
+FILE_PATTERN = "xmlRpt*.xls*" 
 OUTPUT_FILE = os.path.join(DOWNLOAD_DIR, "filtered_report.xlsx")
 # =============================
 
@@ -67,22 +53,18 @@ def convert_xls_to_xlsx(xls_path):
     excel = win32.Dispatch('Excel.Application')
     excel.DisplayAlerts = False
     wb = excel.Workbooks.Open(xls_path)
-    wb.SaveAs(xlsx_path, FileFormat=51) # xlOpenXMLWorkbook
+    wb.SaveAs(xlsx_path, FileFormat=51) 
     wb.Close()
     excel.Quit()
-															 
     return xlsx_path
 
 def find_latest_report(download_dir, pattern):
     files = glob.glob(os.path.join(download_dir, pattern))
-								   
     if not files:
-													 
         return None
     return max(files, key=os.path.getmtime)
 
 def cleanup_old_reports(download_dir, pattern, output_file):
-    """Deletes all files matching the report pattern and the local output file."""
     print(Fore.CYAN + "\n=== CLEANUP ===")
     confirm = input(Fore.YELLOW + "Delete ALL 'xmlRpt' files and the filtered report? (yes/no): ").strip().lower()
     
@@ -98,41 +80,29 @@ def cleanup_old_reports(download_dir, pattern, output_file):
             except Exception as e:
                 print(Fore.RED + f"Could not delete {f}: {e}")
         print(Fore.GREEN + "Downloads folder cleaned.")
-    else:
-        print(Fore.WHITE + "Cleanup skipped.")
 
 def prompt_filters():
     print(Fore.CYAN + Style.BRIGHT + "\n=== FILTER REPORT PROMPTS ===")
     dispatch = input(Fore.YELLOW + "DispatchZone to filter (leave blank for all): ").strip()
 
     if dispatch:
-        user_defaults = input(Fore.YELLOW + "Use default 'yes' for other filters? (yes/no): ").strip().lower()
-        if user_defaults == 'yes':
+        if input(Fore.YELLOW + "Use default 'yes' for other filters? (yes/no): ").strip().lower() == 'yes':
             return dispatch, 'yes', 'yes', 'yes'
         
-								
-															  
-			 
-													 
-    hide_blank_r = input(Fore.YELLOW + "Hide rows with blank receive scans? (yes/no): ").strip()
-    hide_driver_data = input(Fore.YELLOW + "Hide rows with data in Driver? (yes/no): ").strip()
-																							  
-		 
-																			
-																									
-																								   
-    signed_blank = input(Fore.YELLOW + "Show only blank SignedBy? (yes/no): ").strip()
+    hbr = input(Fore.YELLOW + "Hide blank receive scans? (yes/no): ").strip()
+    hdd = input(Fore.YELLOW + "Hide rows with Driver data? (yes/no): ").strip()
+    sb = input(Fore.YELLOW + "Show only blank SignedBy? (yes/no): ").strip()
 
-    return dispatch, hide_blank_r, hide_driver_data, signed_blank
+    return dispatch, hbr, hdd, sb
 
-def apply_filters(df, dispatch, hide_blank_r, hide_driver_data, signed_blank):
+def apply_filters(df, dispatch, hbr, hdd, sb):
     if dispatch:
         df = df[df["DispatchZone"].astype(str).str.contains(dispatch, case=False, na=False)]
-    if hide_blank_r.lower() == "yes":
+    if hbr.lower() == "yes":
         df = df[~(df["R"].isna() | (df["R"] == ""))]
-    if hide_driver_data.lower() == "yes":
+    if hdd.lower() == "yes":
         df = df[df["Driver"].isna() | (df["Driver"] == "")]
-    if signed_blank.lower() == "yes":
+    if sb.lower() == "yes":
         df = df[df["SignedBy"].isna() | (df["SignedBy"] == "")]
     return df
 
@@ -149,44 +119,31 @@ def create_outlook_email(output_file):
     mail.Display()
 
 def main():
-    # Check for updates once at startup
     check_for_updates()
     
     while True:
         print(Fore.CYAN + Style.BRIGHT + "\n" + "="*45)
         print(Fore.WHITE + f"Monitoring Downloads: {DOWNLOAD_DIR}")
-															
         
         latest_file = find_latest_report(DOWNLOAD_DIR, FILE_PATTERN)
         
         if not latest_file:
             print(Fore.RED + "No reports found (xmlRpt*.xls).")
             if input(Fore.YELLOW + "Search again? (Enter for Yes, 'exit' to quit): ").lower() == 'exit':
-							   
                 break
             continue
 
         print(Fore.GREEN + f"Found: {os.path.basename(latest_file)}")
 
-						  
-													  
-						 
-														  
-		
         try:
-            # Handle conversion if necessary
             if latest_file.lower().endswith(".xls"):
                 latest_file = convert_xls_to_xlsx(latest_file)
             
             df = pd.read_excel(latest_file, engine="openpyxl")
             df = df.drop_duplicates(subset=['OrderNumber'])
             
-            # Filtering and Sorting
-
-							 
-            dispatch, hb_r, hd_d, sb = prompt_filters()
-            df_filtered = apply_filters(df, dispatch, hb_r, hd_d, sb)
-			
+            d, h, dr, s = prompt_filters()
+            df_filtered = apply_filters(df, d, h, dr, s)
             df_filtered["Driver"] = df_filtered["Driver"].fillna("").astype(str)
             df_filtered = df_filtered.sort_values(by="Driver", ascending=True)
 
@@ -197,23 +154,18 @@ def main():
                 print(Fore.GREEN + f"Filtered report saved: {OUTPUT_FILE}")
                 
                 if input(Fore.YELLOW + "Send via Outlook? (yes/no): ").lower() == "yes":
-									  
                     create_outlook_email(OUTPUT_FILE)
                 else:
                     os.startfile(OUTPUT_FILE)
                     print(Fore.GREEN + "Opening in Excel...")
 
-            # Cleanup old reports
             cleanup_old_reports(DOWNLOAD_DIR, FILE_PATTERN, OUTPUT_FILE)
 
         except Exception as e:
             print(Fore.RED + f"Error processing report: {e}")
 
-        # Persistent Loop Prompt
         print(Fore.CYAN + "\n" + "-"*45)
         if input(Fore.YELLOW + "Process another report? (Enter for Yes, 'exit' to quit): ").lower() == 'exit':
-							
-            print(Fore.WHITE + "Closing application...")
             break
 
 if __name__ == "__main__":
