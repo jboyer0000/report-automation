@@ -1,4 +1,4 @@
-APP_VERSION = "2.3"
+APP_VERSION = "2.4"
 import pandas as pd
 import glob
 import os
