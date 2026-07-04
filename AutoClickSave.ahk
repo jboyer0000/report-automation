@@ -2,11 +2,19 @@
 #SingleInstance Force
 
 ; --- CONFIGURATION ---
-siteName := "e-courier" 
-myExeName := "filter_and_email_reportV2.6.exe"
+siteName := "e-courier"
+myExeName := "filter_and_email_report.exe"
 ; ---------------------
 
 SetTimer(WatchForDownload, 500)
+SetTimer(CheckParentStatus, 2000) ; Check if Python script is running every 2 seconds
+
+CheckParentStatus() {
+    ; If the python exe is no longer running, kill this AHK script
+    if not ProcessExist(myExeName) {
+        ExitApp
+    }
+}
 
 WatchForDownload() {
     downloadTitle := "Internet Explorer Download - Security Warning"
@@ -17,7 +25,7 @@ WatchForDownload() {
             ; 1. Activate the security warning and save
             WinActivate(downloadTitle)
             Sleep(200)
-            Send("s") 
+            Send("s")
             
             ; 2. Wait for the security dialog to actually close
             WinWaitClose(downloadTitle, , 3)
@@ -37,7 +45,6 @@ WatchForDownload() {
             }
 
             ; 6. JUMP TO YOUR REPORT EXE
-            ; Now outside the previous IF block so it always runs!
             if WinExist("ahk_exe " . myExeName) {
                 WinRestore("ahk_exe " . myExeName) ; Restores if minimized
                 WinActivate("ahk_exe " . myExeName) ; Brings to front
