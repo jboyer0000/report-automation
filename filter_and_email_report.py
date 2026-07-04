@@ -1,4 +1,4 @@
-APP_VERSION = "2.6"
+APP_VERSION = "2.7"
 import pandas as pd
 import glob
 import os
@@ -118,9 +118,23 @@ def create_outlook_email(output_file):
     mail.Attachments.Add(output_file)
     mail.To = input(Fore.YELLOW + "Enter recipient emails (comma separated): ").strip()
     mail.Display()
+    
+def launch_ahk_monitor():
+    ahk_exe_path = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "AutoClickSave.exe")
+    
+    if os.path.exists(ahk_exe_path):
+        process = subprocess.Popen([ahk_exe_path])
+        print(Fore.GREEN + "Background browser monitor initialized.")
+        return process # Return the process object so we can control it later
+    else:
+        print(Fore.RED + f"Execution Failed: {ahk_exe_path} not found.")
+        return None
 
 def main():
     check_for_updates()
+    
+    # Store the process variable
+    ahk_process = launch_ahk_monitor()
     
     while True:
         print(Fore.CYAN + Style.BRIGHT + "\n" + "="*45)
@@ -167,6 +181,10 @@ def main():
 
         print(Fore.CYAN + "\n" + "-"*45)
         if input(Fore.YELLOW + "Process another report? (Enter for Yes, 'exit' to quit): ").lower() == 'exit':
+            # kill the background process before breaking the loop
+            if ahk_process:
+                ahk_process.terminate()
+                print(Fore.YELLOW + "Background monitor terminated.")
             break
 
 if __name__ == "__main__":
