@@ -1,4 +1,7 @@
-APP_VERSION = "2.8"
+APP_VERSION = "2.9"
+import zipfile
+import io
+import time
 import pandas as pd
 import glob
 import os
@@ -16,29 +19,102 @@ try:
     import win32com.client as win32
 except ImportError:
     win32com = None
+    
+def clean_old_updates():
+    """Silently deletes old executable versions left behind by the updater."""
+    if not getattr(sys, 'frozen', False):
+        return # Skip if running as a standard .py script in development
+        
+    current_dir = os.path.dirname(sys.executable)
+    for file in os.listdir(current_dir):
+        if file.endswith("_OLD.exe"):
+            old_file_path = os.path.join(current_dir, file)
+            
+            # Retry loop to overcome OS file lock race conditions
+            for _ in range(5):
+                try:
+                    os.remove(old_file_path)
+                    break # Success, break the loop
+                except PermissionError:
+                    time.sleep(0.5) # Wait for Windows to kill the old process
+                except Exception:
+                    pass
 
 def check_for_updates():
-    """Checks for updates and redirects the user to the GitHub Release page."""
     VERSION_URL = "https://raw.githubusercontent.com/jboyer0000/report-automation/master/version.txt"
-    RELEASE_URL = "https://github.com/jboyer0000/report-automation/releases/latest"
+    API_URL = "https://api.github.com/repos/jboyer0000/report-automation/releases/latest"
     
     try:
         response = requests.get(VERSION_URL, timeout=5)
         response.raise_for_status()
         latest_version = response.text.strip()
         
-        if latest_version != APP_VERSION:
-            print(Fore.CYAN + Style.BRIGHT + f"\n[UPDATE] A new version ({latest_version}) is available!")
-            print(Fore.WHITE + "To update, please download the latest version from GitHub.")
-            choice = input(Fore.YELLOW + "Open the download page now? (yes/no): ").strip().lower()
+        if float(latest_version) > float(APP_VERSION):
+            print(Fore.CYAN + Style.BRIGHT + f"\n[UPDATE] Version {latest_version} is available!")
+            choice = input(Fore.YELLOW + "Would you like to auto-update now? (yes/no): ").strip().lower()
             
             if choice == "yes":
-                print(Fore.GREEN + "Opening browser...")
-                webbrowser.open(RELEASE_URL)
-                print(Fore.WHITE + "Please close this program before installing the new version.")
-                input(Fore.WHITE + "Press Enter to continue with the current version or close the window...")
+                if getattr(sys, 'frozen', False):
+                    print(Fore.GREEN + "Initializing automatic update...")
+                    
+                    # 1. Fetch download URL via GitHub API
+                    api_response = requests.get(API_URL, timeout=5).json()
+                    
+                    download_url = None
+                    for asset in api_response.get('assets', []):
+                        if asset['name'].endswith('.zip'):
+                            download_url = asset['browser_download_url']
+                            break
+                            
+                    if not download_url:
+                        raise Exception("Critical: No .zip archive found in the latest release assets.")
+                    
+                    # 2. Download zip into memory
+                    print(Fore.WHITE + "Downloading update...")
+                    zip_response = requests.get(download_url)
+                    zip_data = zipfile.ZipFile(io.BytesIO(zip_response.content))
+                    
+                    # 3. Environment mapping
+                    current_exe = sys.executable
+                    current_dir = os.path.dirname(current_exe)
+                    exe_name = os.path.basename(current_exe)
+                    
+                    # 4. Release locks by killing AHK monitor
+                    subprocess.run(["taskkill", "/F", "/IM", "AutoClickSave.exe"], capture_output=True)
+                    time.sleep(0.5)
+                    
+                    # 5. The Rename-and-Replace bypass
+                    old_exe = os.path.join(current_dir, exe_name.replace(".exe", "_OLD.exe"))
+                    if os.path.exists(old_exe):
+                        os.remove(old_exe) 
+                    os.rename(current_exe, old_exe)
+                    
+                    # 6. Extract new files
+                    print(Fore.WHITE + "Extracting new files...")
+                    zip_data.extractall(current_dir)
+                    
+                    # 7. Handoff
+                    print(Fore.GREEN + "Update complete. Rebooting terminal...")
+                    time.sleep(1)
+                    subprocess.Popen([os.path.join(current_dir, "filter_and_email_report.exe")])
+                    sys.exit() 
+                else:
+                    print(Fore.RED + "Auto-update disabled in uncompiled development environment.")
+                    
     except Exception as e:
-        print(Fore.RED + f"Update check skipped. Error: {e}")
+        print(Fore.RED + f"Auto-update sequence failed: {e}")
+        
+        # 1. Attempt to revert the executable rename if it occurred
+        try:
+            if 'old_exe' in locals() and 'current_exe' in locals():
+                if os.path.exists(old_exe) and not os.path.exists(current_exe):
+                    os.rename(old_exe, current_exe)
+        except Exception:
+            pass # If reverting fails, pass silently
+            
+        # 2. Force termination to prevent zombie execution
+        input(Fore.YELLOW + "Press Enter to close the program and try again...")
+        sys.exit()
 
 def get_download_folder():
     return str(Path.home() / "Downloads")
@@ -124,13 +200,14 @@ def launch_ahk_monitor():
     
     if os.path.exists(ahk_exe_path):
         process = subprocess.Popen([ahk_exe_path])
-        print(Fore.GREEN + "Background browser monitor initialized.")
+        print(Fore.GREEN + "Background terminal monitor initialized.")
         return process # Return the process object so we can control it later
     else:
         print(Fore.RED + f"Execution Failed: {ahk_exe_path} not found.")
         return None
 
 def main():
+    clean_old_updates()
     check_for_updates()
     
     # Store the process variable
