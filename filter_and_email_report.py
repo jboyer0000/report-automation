@@ -1,4 +1,4 @@
-APP_VERSION = "2.7"
+APP_VERSION = "2.8"
 import pandas as pd
 import glob
 import os
@@ -86,9 +86,9 @@ def prompt_filters():
     print(Fore.CYAN + Style.BRIGHT + "\n=== FILTER REPORT PROMPTS ===")
     dispatch = input(Fore.YELLOW + "DispatchZone to filter (leave blank for all): ").strip()
 
-    if dispatch:
-        if input(Fore.YELLOW + "Use default 'yes' for other filters? (yes/no): ").strip().lower() == 'yes':
-            return dispatch, 'yes', 'yes', 'yes'
+    # The shortcut is now decoupled and offered universally
+    if input(Fore.YELLOW + "Use default 'yes' for other filters? (yes/no): ").strip().lower() == 'yes':
+        return dispatch, 'yes', 'yes', 'yes'
         
     hbr = input(Fore.YELLOW + "Hide blank receive scans? (yes/no): ").strip()
     hdd = input(Fore.YELLOW + "Hide rows with Driver data? (yes/no): ").strip()
