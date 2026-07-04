@@ -1,3 +1,10 @@
+#Ignore compiled executables
+*.exe
+
+#Ignore compress distribution archives
+*.zip
+
+#Ignore PyInstaller build artifacts
 __pycache__/
 *.pyc
 /build/
